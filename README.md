@@ -40,4 +40,4 @@
 
 
 ## Miscellaneous
-ROS2 bags were recorded at 0.5m, 1m, 1.5m, and 2m from the wall for approximately 30 seconds.  These bags are located in the [/data/ directory](/results/).
+ROS2 bags were recorded at 0.5m, 1m, 1.5m, and 2m from the wall for approximately 30 seconds.  These bags are located in the [/data/ directory](/data/).
