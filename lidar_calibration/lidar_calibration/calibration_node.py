@@ -1,7 +1,3 @@
-# TODO:
-#   - Save data to YAML when exited
-
-
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
@@ -14,7 +10,7 @@ class CalibrationNode(Node):
     def __init__(self):
         super().__init__('calibration_node')
         # Params
-        self.declare_parameter('target_distance', 1.0)  # TODO Change this to actual distance to target
+        self.declare_parameter('target_distance', 1.0)
         self.declare_parameter('target_angle', 0.0)
         self.declare_parameter('angle_window', 0.1)
         # Subs
@@ -43,43 +39,67 @@ class CalibrationNode(Node):
         self.outlier_count = 0
     
     def scanSub(self, msg):
+        """
+        Calculates the error and statistics from a lidar scan message
+        Sub:
+            - Topic: /scan | Type: sensor_msgs/LaserScan
+        Pub:
+            - Topic: /calibration/statistics/range_mean | Type: std_msgs/Float64
+                ~ Running mean of range measurements
+            - Topic: /calibration/statistics/range_sd | Type: std_msgs/Float64
+                ~ Running standard deviation of range measurements
+            - Topic: /calibration/statistics/outlier_count | Type: std_msgs/Float64
+                ~ Amount of outliers (>3SDs)
+            - Topic: /calibration/statistics/hit_ds | Type: std_msgs/Float64
+                ~ Running hit standard deviation
+        """
         target_distance = self.get_parameter('target_distance').get_parameter_value().double_value
         target_angle = self.get_parameter('target_angle').get_parameter_value().double_value
         angle_window = self.get_parameter('angle_window').get_parameter_value().double_value
         ranges = msg.ranges
-        i = int((target_angle - msg.angle_min) / msg.angle_increment)
-        self.get_logger().info(f"Range measured {ranges[i]}")
-        # Publish error
-        error = Float64()
-        e = ranges[i] - target_distance
-        error.data = e
-        self.error_pub.publish(error)
-        # Calculate hit sd
-        self.n += 1
-        hit_sd = math.sqrt(e**2/self.n)
-        if self.variance is not None:
-            if ranges[i] < self.mean - 3*math.sqrt(self.variance) or ranges[i] > self.mean + 3*math.sqrt(self.variance):
-                self.get_logger().warn(f"Outlier detected: {ranges[i]}")
-                self.outlier_count += 1
-        # Welford's online algorithm
-        delta = ranges[i] - self.mean
-        self.mean += delta / self.n
-        self.M2 += delta * (ranges[i] - self.mean)
-        self.variance = self.M2 / (self.n)
-        # Publish statistics
-        for stat_name in self.stat_pub:
-            stat_msg = Float64()
-            if stat_name == 'range_mean':
-                stat_msg.data = self.mean
-            elif stat_name == 'range_sd':
-                stat_msg.data = math.sqrt(self.variance)
-            elif stat_name == 'outlier_count':
-                stat_msg.data = float(self.outlier_count)
-            elif stat_name == 'hit_sd':
-                stat_msg.data = hit_sd
-            self.stat_pub[stat_name].publish(stat_msg)
+        index = int((target_angle - msg.angle_min) / msg.angle_increment)
+        self.get_logger().info(f"Range measured {ranges[index]}")
+        if msg.angle_increment <= angle_window:
+            min_i = index - math.floor(angle_window/msg.angle_increment)
+            max_i = index + math.floor(angle_window/msg.angle_increment)
+            indexes = range(min_i, max_i+1)
+        else:
+            indexes = [index]
+        for i in indexes:
+            if math.isnan(ranges[i]):
+                continue
+            # Publish error
+            error = Float64()
+            e = ranges[i] - target_distance
+            error.data = e
+            self.error_pub.publish(error)
+            # Calculate hit sd
+            self.n += 1
+            hit_sd = math.sqrt(e**2/self.n)
+            if self.variance is not None:
+                if ranges[i] < self.mean - 3*math.sqrt(self.variance) or ranges[i] > self.mean + 3*math.sqrt(self.variance):
+                    self.get_logger().warn(f"Outlier detected: {ranges[i]}")
+                    self.outlier_count += 1
+            # Welford's online algorithm
+            delta = ranges[i] - self.mean
+            self.mean += delta / self.n
+            self.M2 += delta * (ranges[i] - self.mean)
+            self.variance = self.M2 / (self.n)
+            # Publish statistics
+            for stat_name in self.stat_pub:
+                stat_msg = Float64()
+                if stat_name == 'range_mean':
+                    stat_msg.data = self.mean
+                elif stat_name == 'range_sd':
+                    stat_msg.data = math.sqrt(self.variance)
+                elif stat_name == 'outlier_count':
+                    stat_msg.data = float(self.outlier_count)
+                elif stat_name == 'hit_sd':
+                    stat_msg.data = hit_sd
+                self.stat_pub[stat_name].publish(stat_msg)
     
     def destroy_node(self):
+        """ Writes stats to YAML on close """
         data = {
                 'range_mean': self.mean,
                 'range_std_deviation': math.sqrt(self.variance) if self.variance is not None else None,
