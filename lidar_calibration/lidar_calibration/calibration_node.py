@@ -1,5 +1,4 @@
 # TODO:
-#   - Add outlier rejection (e.g. if error > 3 std dev, ignore sample)
 #   - Save data to YAML when exited
 
 
