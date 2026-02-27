@@ -1,0 +1,13 @@
+launch:
+  - node:
+      pkg: "lidar_calibration"
+      exec: "calibration_node"
+      name: "calibration_node"
+      param:
+        - name: "target_distance"
+          value: 1.0
+        - name: "target_angle"
+          value: 0.0
+        - name: "angle_window"
+          value: 0.1
+      
