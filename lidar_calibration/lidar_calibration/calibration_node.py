@@ -33,3 +33,13 @@ class CalibrationNode(Node):
     
     def scanSub(self, msg):
         pass
+
+def main():
+    rclpy.init()
+    node = CalibrationNode()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
