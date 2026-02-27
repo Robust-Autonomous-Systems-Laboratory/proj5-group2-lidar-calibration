@@ -139,9 +139,15 @@ $ colcon build --symlink-install
 $ source install/setup.bash
 ```
 ### Running
-The node uses three ros params for configuration: `target_distance`, `target_angle`, and `angle_offset`. Theses params can be configured in the launch file located in `lidar_calibration/launch/calibration_launch.yaml`. To run the node with these parameters, run the following command:
+The node uses three ros params for configuration: `target_distance`, `target_angle`, and `angle_offset`. Theses params can be configured in the launch file located in the [launch directory here](/lidar_calibration/launch/calibration_launch.yaml). To run the node with these parameters, run the following command:
 ```
 $ ros2 launch lidar_calibration calibration_launch.yaml
+```
+
+With the node running in one terminal, proceed to open a new terminal and playback the bag. Be sure to update the parameters in the [yaml file](/lidar_calibration/launch/calibration_launch.yaml):
+```
+$ cd ~/proj5_ws/src/proj5-group2-lidar-calibration/data
+$ ros2 bag play lidar_calibration_1m
 ```
 
 ### How to run the offline analysis script
