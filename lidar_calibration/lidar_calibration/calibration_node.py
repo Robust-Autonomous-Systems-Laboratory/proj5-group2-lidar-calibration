@@ -7,7 +7,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float64
-import numpy as np
+import math
 import yaml
 
 class CalibrationNode(Node):
@@ -56,9 +56,9 @@ class CalibrationNode(Node):
         self.error_pub.publish(error)
         # Calculate hit sd
         self.n += 1
-        hit_sd = np.sqrt(e**2/self.n)
+        hit_sd = math.sqrt(e**2/self.n)
         if self.variance is not None:
-            if ranges[i] < target_distance - 3*np.sqrt(self.variance) or ranges[i] > target_distance + 3*np.sqrt(self.variance):
+            if ranges[i] < target_distance - 3*math.sqrt(self.variance) or ranges[i] > target_distance + 3*math.sqrt(self.variance):
                 self.get_logger().warn(f"Outlier detected: {ranges[i]}")
                 self.outlier_count += 1
         # Welford's online algorithm
@@ -72,7 +72,7 @@ class CalibrationNode(Node):
             if stat_name == 'range_mean':
                 stat_msg.data = self.mean
             elif stat_name == 'range_sd':
-                stat_msg.data = np.sqrt(self.variance)
+                stat_msg.data = math.sqrt(self.variance)
             elif stat_name == 'outlier_count':
                 stat_msg.data = float(self.outlier_count)
             elif stat_name == 'hit_sd':
@@ -82,9 +82,9 @@ class CalibrationNode(Node):
     def destroy_node(self):
         data = {
                 'range_mean': self.mean,
-                'range_std_deviation': np.sqrt(self.variance) if self.variance is not None else None,
+                'range_std_deviation': math.sqrt(self.variance) if self.variance is not None else None,
                 'outlier_count': self.outlier_count,
-                'hit_std_deviation': np.sqrt(self.M2 / self.n),
+                'hit_std_deviation': math.sqrt(self.M2 / self.n),
                 }
         with open('calibration_results.yaml', 'w') as f:
             yaml.dump(data, f)
