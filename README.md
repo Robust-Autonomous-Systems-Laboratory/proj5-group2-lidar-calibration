@@ -113,16 +113,61 @@ To correct for these biases, a consistent and calibrated reference alignment sho
 
 ## 5. Usage Instructions
 
-### Build instructions for your ROS2 package
-
-
-### How to run the calibration node with parameters
-
+### Install and Build
+1. Create a new ros workspace
+```
+$ mkdir -p proj5_ws/src
+```
+2. Navigate to the src directory
+```
+$ cd proj5_ws/src
+```
+3. Clone this repository into the src folder
+```
+$ git clone https://github.com/Robust-Autonomous-Systems-Laboratory/proj5-group2-lidar-calibration.git
+```
+4. Navigate back to the head of the workspace
+```
+$ cd ~/proj5_ws
+```
+5. Build the package
+```
+$ colcon build --symlink-install
+```
+6. Source the setup file
+```
+$ source install/setup.bash
+```
+### Running
+The node uses three ros params for configuration: `target_distance`, `target_angle`, and `angle_offset`. Theses params can be configured in the launch file located in `lidar_calibration/launch/calibration_launch.yaml`. To run the node with these parameters, run the following command:
+```
+$ ros2 launch lidar_calibration calibration_launch.yaml
+```
 
 ### How to run the offline analysis script
 
+Navigate to this repo in your installation:
+```
+$ cd ~/proj5_ws/src/proj5-group2-lidar-calibration
+```
 
-### Example commands and expected output
+Run the python script:
+```
+$ python3 analysis/analyze_lidar_bag.py
+```
+
+This python script uses bag data located in the [data directory](/data/) of this repo.  If you wish to use additional ROS bags in the offline analysis script, please ensure they are located in the [data directory](/data/)
+
+Furthermore, you will have to adjust lines 9 and 10 in `analyze_lidar_bag.py` to match your new bag name and target distance, such as:
+
+``` python
+bag_name = 'lidar_calibration_2m' # adjust this for each bag to test
+target_distance = 2 # adjust for each distance, in meters
+```
+
+Once the changes are made, save the file and run again.
+
+An example of this script ran with the 2m calibration bag will print out summary statistics in the terminal, including $\sigma_{hit}$ and bias, and display a historgram plot of the range data.  The histogram will also be saved in the [figures directory](/analysis/figures/). Summary statistics will be appended to the [parameter_estimation.csv file](/data/parameter_estimation.csv).
 
 
 ## References
