@@ -58,7 +58,7 @@ class CalibrationNode(Node):
         self.n += 1
         hit_sd = math.sqrt(e**2/self.n)
         if self.variance is not None:
-            if ranges[i] < target_distance - 3*math.sqrt(self.variance) or ranges[i] > target_distance + 3*math.sqrt(self.variance):
+            if ranges[i] < self.mean - 3*math.sqrt(self.variance) or ranges[i] > self.mean + 3*math.sqrt(self.variance):
                 self.get_logger().warn(f"Outlier detected: {ranges[i]}")
                 self.outlier_count += 1
         # Welford's online algorithm
