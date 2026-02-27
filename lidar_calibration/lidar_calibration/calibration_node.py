@@ -1,6 +1,4 @@
 # TODO:
-#   - Make custom statistics msg (mean, std deviation, outlier count)
-#   - Publish statistics every N samples instead of every scan 
 #   - Add outlier rejection (e.g. if error > 3 std dev, ignore sample)
 #   - Save data to YAML when exited
 
@@ -10,12 +8,14 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Float64
+import numpy as np
+import yaml
 
 class CalibrationNode(Node):
     def __init__(self):
         super().__init__('calibration_node')
         # Params
-        self.declare_parameter('target_distance', 0.5)  # TODO Change this to actual distance to target
+        self.declare_parameter('target_distance', 1.0)  # TODO Change this to actual distance to target
         self.declare_parameter('target_angle', 0.0)
         self.declare_parameter('angle_window', 0.1)
         # Subs
@@ -30,14 +30,18 @@ class CalibrationNode(Node):
                 Float64,
                 '/calibration/range_error',
                 20)
-        self.stat_pub = self.create_publisher(
-                Float64,    # TODO Change this!!!
-                '/calibration/statistics',
-                20)
+        self.stat_pub = {
+                'range_mean' : self.create_publisher(Float64, '/calibration/statistics/range_mean', 20),
+                'range_sd' : self.create_publisher(Float64, '/calibration/statistics/range_sd', 20),
+                'outlier_count' : self.create_publisher(Float64, '/calibration/statistics/outlier_count', 20),
+                'hit_sd' : self.create_publisher(Float64, '/calibration/statistics/hit_sd', 20),
+                         }
         # Vars
         self.mean = self.get_parameter('target_distance').get_parameter_value().double_value
         self.n = 0
         self.M2 = 0.0
+        self.variance = None
+        self.outlier_count = 0
     
     def scanSub(self, msg):
         target_distance = self.get_parameter('target_distance').get_parameter_value().double_value
@@ -45,24 +49,58 @@ class CalibrationNode(Node):
         angle_window = self.get_parameter('angle_window').get_parameter_value().double_value
         ranges = msg.ranges
         i = int((target_angle - msg.angle_min) / msg.angle_increment)
+        self.get_logger().info(f"Range measured {ranges[i]}")
         # Publish error
         error = Float64()
-        error.data = ranges[i] - target_distance
+        e = ranges[i] - target_distance
+        error.data = e
         self.error_pub.publish(error)
-        # Welford's online algorithm
+        # Calculate hit sd
         self.n += 1
+        hit_sd = np.sqrt(e**2/self.n)
+        if self.variance is not None:
+            if ranges[i] < target_distance - 3*np.sqrt(self.variance) or ranges[i] > target_distance + 3*np.sqrt(self.variance):
+                self.get_logger().warn(f"Outlier detected: {ranges[i]}")
+                self.outlier_count += 1
+        # Welford's online algorithm
         delta = ranges[i] - self.mean
         self.mean += delta / self.n
         self.M2 += delta * (ranges[i] - self.mean)
-        variance = self.M2 / (self.n)
-        # TODO Publish statistics
+        self.variance = self.M2 / (self.n)
+        # Publish statistics
+        for stat_name in self.stat_pub:
+            stat_msg = Float64()
+            if stat_name == 'range_mean':
+                stat_msg.data = self.mean
+            elif stat_name == 'range_sd':
+                stat_msg.data = np.sqrt(self.variance)
+            elif stat_name == 'outlier_count':
+                stat_msg.data = float(self.outlier_count)
+            elif stat_name == 'hit_sd':
+                stat_msg.data = hit_sd
+            self.stat_pub[stat_name].publish(stat_msg)
+    
+    def destroy_node(self):
+        data = {
+                'range_mean': self.mean,
+                'range_std_deviation': np.sqrt(self.variance) if self.variance is not None else None,
+                'outlier_count': self.outlier_count,
+                'hit_std_deviation': np.sqrt(self.M2 / self.n),
+                }
+        with open('calibration_results.yaml', 'w') as f:
+            yaml.dump(data, f)
+        super().destroy_node()
 
 def main():
     rclpy.init()
     node = CalibrationNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
