@@ -88,6 +88,7 @@ class CalibrationNode(Node):
                 }
         with open('calibration_results.yaml', 'w') as f:
             yaml.dump(data, f)
+            self.get_logger().info("Interrupt detected! Logging results...")
         super().destroy_node()
 
 def main():
@@ -99,7 +100,10 @@ def main():
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        try:
+            rclpy.shutdown()
+        except:
+            pass
 
 if __name__ == '__main__':
     main()
