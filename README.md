@@ -37,7 +37,36 @@
 - How to run the calibration node with parameters
 - How to run the offline analysis script
 - Example commands and expected output
-
+### Install and Build
+1. Create a new ros workspace
+```
+mkdir -p proj5_ws/src
+```
+2. Navigate to the src directory
+```
+cd proj5_ws/src
+```
+3. Clone this repository into the src folder
+```
+git clone https://github.com/Robust-Autonomous-Systems-Laboratory/proj5-group2-lidar-calibration.git
+```
+4. Navigate back to the head of the workspace
+```
+cd ..
+```
+5. Build the package
+```
+colcon build --symlink-install
+```
+6. Source the setup file
+```
+source install/setup.bash
+```
+### Running
+The node uses three ros params for configuration: `target_distance`, `target_angle`, and `angle_offset`. Theses params can be configured in the launch file located in `lidar_calibration/launch/calibration_launch.yaml`. To run the node with these parameters, run the following command:
+```
+ros2 launch lidar_calibration calibration_launch.yaml
+```
 
 ## Miscellaneous
 ROS2 bags were recorded at 0.5m, 1m, 1.5m, and 2m from the wall for approximately 30 seconds.  These bags are located in the [/data/ directory](/data/).
